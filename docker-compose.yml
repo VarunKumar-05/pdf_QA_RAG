@@ -1,0 +1,28 @@
+version: "3.9"
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: pdf-backend
+    environment:
+      - MONGO_URI=mongodb+srv://varun:Passcode#123@cluster0.j76oos8.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0
+      - GROQ_API_KEY=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
+    volumes:
+      - ./data:/app/data
+    ports:
+      - "8000:8000"
+    restart: always
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: pdf-frontend
+    environment:
+      - BACKEND_URL=http://backend:8000
+    ports:
+      - "8501:8501"
+    depends_on:
+      - backend
+    restart: always
