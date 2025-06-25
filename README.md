@@ -84,7 +84,7 @@ Or use the included web UI (if available).
 ## ⚙️ Configuration
 
 - **Model selection:** Change the model in `config.py` (e.g., `sentence-transformers/all-MiniLM-L6-v2`)
-- **Vector Store:** Switch between FAISS, ChromaDB, or Pinecone in `vectorstore.py`.
+- **Vector Store:** Switch between Qdrant in `vectorstore.py`.
 - **Chunk size, max docs, etc.:** Tunable in `config.py`.
 
 ---
