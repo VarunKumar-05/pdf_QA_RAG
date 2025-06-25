@@ -6,8 +6,8 @@ services:
       dockerfile: Dockerfile.backend
     container_name: pdf-backend
     environment:
-      - MONGO_URI=mongodb+srv://varun:Passcode#123@cluster0.j76oos8.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0
-      - GROQ_API_KEY=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
+      - MONGO_URI=<MONGO-URI>
+      - GROQ_API_KEY=<GROQ_API_KEY>
     volumes:
       - ./data:/app/data
     ports:
