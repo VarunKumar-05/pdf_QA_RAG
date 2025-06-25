@@ -1,4 +1,3 @@
-
 import base64
 import tempfile
 import pandas as pd
@@ -19,9 +18,17 @@ if "selected_collection" not in st.session_state:
     st.session_state.selected_collection = None
 if "combine_mode" not in st.session_state:
     st.session_state.combine_mode = True
+if "last_mode" not in st.session_state:  # new line
+    st.session_state.last_mode = st.session_state.combine_mode
 def clear_qa():
     st.session_state.qa_question = ""
-
+def clear_uploaded_files():  # new line
+    st.session_state.pdf_collections = []  # new line
+    st.session_state.selected_pdf_hash = ""  # new line
+    st.session_state.selected_pdf_filename = ""  # new line
+    for key in list(st.session_state.keys()):  # new line
+        if key.startswith("pdf_uploads"):  # new line
+            del st.session_state[key]
 def main():
     st.set_page_config(page_title="PDF AI Assistant (Voice & Archive)", page_icon="🤖", layout="wide")
     
@@ -46,14 +53,17 @@ def main():
     with st.sidebar:
         st.header("⚙️ Configuration")
         st.subheader("Qdrant Storage Mode")
-        st.session_state.combine_mode = st.radio(
+        combine_mode = st.radio(
             "How to store PDFs?",
             options=["Combine all PDFs", "Keep PDFs separate"],
             index=0 if st.session_state.combine_mode else 1
         ) == "Combine all PDFs"
-
+        if st.session_state.last_mode != combine_mode:  # new line
+            clear_uploaded_files()  # new line
+            st.session_state.last_mode = combine_mode
         # Collection name input for combine mode
-        if st.session_state.combine_mode:
+        if combine_mode:
+            
             collection_name_combine = st.text_input(
                 "Enter a name for the combined collection:",
                 value=st.session_state.get("collection_name_combine", ""),
@@ -67,6 +77,7 @@ def main():
                     )
                 except Exception as e:
                     st.warning(f"Could not set collection name in backend: {e}")
+       
         st.subheader("Retrieval & Answering Settings")
         top_k_results_for_retrieval = st.slider("Top-K Chunks for Display", 1, 10, 3, 1)
         top_k_results_for_llm = st.slider("Top-K Chunks for LLM Context", 1, 5, 3, 1)
@@ -74,13 +85,12 @@ def main():
         clear_collections = st.button("Clear Collections", on_click=lambda: requests.post(f"{BACKEND_URL}/clear-collections"))
         st.markdown("Clears the entire MongoDB collection(Q&A collection)")
         clear_collection = st.button("clear collections", on_click=lambda: requests.post(f"{BACKEND_URL}/clear-collection"))
-
+    
     tab1, tab2, tab3 = st.tabs(["📄 PDF Q&A", "❓ Context-Aware QG", "📚 Q&A Archive collection"])
-    # if (len(pdf_files) == 0):
-    pdf_files = st.file_uploader("Upload one or more PDF files", type=["pdf"], accept_multiple_files=True, key="pdf_uploads")
-    combine_mode = st.session_state.combine_mode
+    pdf_uploader_key = f"pdf_uploads_{'combine' if combine_mode else 'separate'}"
+    pdf_files = st.file_uploader("Upload one or more PDF files", type=["pdf"], accept_multiple_files=True, key=pdf_uploader_key)
     mode = "combine" if combine_mode else "separate"
-
+    
 
 
     if pdf_files:
@@ -191,12 +201,14 @@ def main():
                         st.warning("Could not transcribe audio")
                 except Exception as e:
                     st.warning(f"Audio transcription error: {e}")
-        user_question = st.text_input("Enter your question:", key="qa_question")
-        col1, spacer, col2 = st.columns([1, 6, 1])
+        user_question = st.text_input("Enter your question:", key="qa_question")     
+        cpl0,col1, col2 = st.columns([1,8,1])
         with col1:
-            search_clicked = st.button("search", key="search_button")
-        with col2:
             st.button("Clear", on_click=clear_qa)
+
+            
+        with col2:
+            search_clicked = st.button("search", key="search_button")
 
         if search_clicked:
             if st.session_state.selected_collection and user_question:
