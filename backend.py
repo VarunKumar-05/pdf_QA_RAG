@@ -370,7 +370,7 @@ Answer:"""
         return f"Error generating answer: {e}"
 
 def generate_question_for_sentence(sentence, context, tokenizer, model):
-    input_text = f"generate different question based on  : context: {context} sentence: {sentence}"
+    input_text = f"generate different question based on  : context: {context} sentence: {sentence}  "
     inputs = tokenizer(input_text, return_tensors="pt", max_length=256, truncation=True)
     outputs = model.generate(**inputs, max_length=64, num_beams=4, early_stopping=True)
     question = tokenizer.decode(outputs[0], skip_special_tokens=True)
@@ -656,24 +656,28 @@ async def generate_questions(request: QuestionGenerationRequest):
     try:
         collection_name = request.collection_name
         if not collection_name or collection_name not in vector_stores:
-            raise HTTPException(status_code=400, detail="PDF/Collection not found. Please upload a PDF first.")
+            raise HTTPException(status_code=404, detail="PDF/Collection not found. Please upload a PDF first.")
         vector_store = vector_stores[collection_name]
         top_sentences = vector_store.similarity_search_top_k(request.context_topic, k=request.num_questions)
-        generated_qa = []
-        for passage in top_sentences:
-            sentence = passage['text']
-            question = generate_question_for_sentence(sentence, request.context_topic, qg_tokenizer, qg_model)
-            doc_results = vector_store.similarity_search_top_k(question, k=3)
-            answer = create_qa_chain(doc_results, question)
-            generated_qa.append({
-                "sentence": sentence,
-                "generated_question": question,
-                "answer": answer,
-                "source_pdf": passage['meta'].get('source_pdf', ''),
-                "page_number": passage['meta'].get('page_number', 0),
-                "score": passage['score']
-            })
-        return {"generated_qa": generated_qa}
+        similarity_threshold= 0.3
+        if not top_sentences or all(passage['score']< similarity_threshold for passage in top_sentences):
+            return{"message": "No context from the PDF"}
+        else:
+            generated_qa = []
+            for passage in top_sentences:
+                sentence = passage['text']
+                question = generate_question_for_sentence(sentence, request.context_topic, qg_tokenizer, qg_model)
+                doc_results = vector_store.similarity_search_top_k(question, k=3)
+                answer = create_qa_chain(doc_results, question)
+                generated_qa.append({
+                    "sentence": sentence,
+                    "generated_question": question,
+                    "answer": answer,
+                    "source_pdf": passage['meta'].get('source_pdf', ''),
+                    "page_number": passage['meta'].get('page_number', 0),
+                    "score": passage['score']
+                })
+            return {"generated_qa": generated_qa}
     except HTTPException:
         raise
     except Exception as e:
