@@ -18,20 +18,20 @@ if "selected_collection" not in st.session_state:
     st.session_state.selected_collection = None
 if "combine_mode" not in st.session_state:
     st.session_state.combine_mode = True
-if "last_mode" not in st.session_state:  # new line
+if "last_mode" not in st.session_state:  
     st.session_state.last_mode = st.session_state.combine_mode
 def clear_qa():
     st.session_state.qa_question = ""
-def clear_uploaded_files():  # new line
-    st.session_state.pdf_collections = []  # new line
-    st.session_state.selected_pdf_hash = ""  # new line
-    st.session_state.selected_pdf_filename = ""  # new line
-    for key in list(st.session_state.keys()):  # new line
-        if key.startswith("pdf_uploads"):  # new line
+def clear_uploaded_files():  
+    st.session_state.pdf_collections = []  
+    st.session_state.selected_pdf_hash = ""  
+    st.session_state.selected_pdf_filename = ""  
+    for key in list(st.session_state.keys()):  
+        if key.startswith("pdf_uploads"):  
             del st.session_state[key]
 def main():
     st.set_page_config(page_title="PDF AI Assistant (Voice & Archive)", page_icon="🤖", layout="wide")
-    
+    msg_placeholder = st.empty()
     st.title("🤖 PDF AI Assistant with Groq & Qdrant")
     st.markdown("Upload multiple PDFs, ask questions (by text or voice), generate context-aware questions, or search previous Q&A. Powered by Groq and Qdrant!")
     if "selected_pdf_hash" not in st.session_state:
@@ -53,15 +53,16 @@ def main():
     with st.sidebar:
         st.header("⚙️ Configuration")
         st.subheader("Qdrant Storage Mode")
+        st.markdown('''choose ur choice of storage mode for PDFs:
+                    Warning : If switched to "Combine all PDFs", all previously uploaded PDFs will be cleared.''')
         combine_mode = st.radio(
             "How to store PDFs?",
             options=["Combine all PDFs", "Keep PDFs separate"],
             index=0 if st.session_state.combine_mode else 1
         ) == "Combine all PDFs"
-        if st.session_state.last_mode != combine_mode:  # new line
-            clear_uploaded_files()  # new line
+        if st.session_state.last_mode != combine_mode:  
+            clear_uploaded_files()  
             st.session_state.last_mode = combine_mode
-        # Collection name input for combine mode
         if combine_mode:
             
             collection_name_combine = st.text_input(
@@ -91,7 +92,15 @@ def main():
     pdf_files = st.file_uploader("Upload one or more PDF files", type=["pdf"], accept_multiple_files=True, key=pdf_uploader_key)
     mode = "combine" if combine_mode else "separate"
     
-
+    st.markdown("""
+<style>
+div.stButton > button {
+    height: 3em;
+    padding: 0.5em 1em;
+    margin-top: 5px;
+}
+</style>
+""", unsafe_allow_html=True)
 
     if pdf_files:
         new_files = [f for f in pdf_files if f.name not in [d["filename"] for d in st.session_state.pdf_collections]]
@@ -129,7 +138,6 @@ def main():
                         st.error(f"❌ Error uploading PDFs: {e}")
                         return
 
-    # PDF list with remove (X) buttons
     if st.session_state.pdf_collections:
         st.markdown("#### Uploaded PDFs")
         for idx, pdf in enumerate(st.session_state.pdf_collections):
@@ -201,8 +209,8 @@ def main():
                         st.warning("Could not transcribe audio")
                 except Exception as e:
                     st.warning(f"Audio transcription error: {e}")
-        user_question = st.text_input("Enter your question:", key="qa_question")     
-        cpl0,col1, col2 = st.columns([1,8,1])
+        user_question = st.text_input("Enter your question:", key="qa_question",label_visibility="collapsed")     
+        col0,col1, col2 = st.columns([1,7,1])
         with col1:
             st.button("Clear", on_click=clear_qa)
 
@@ -226,8 +234,10 @@ def main():
                             st.info(f"Corrected Question: {result['corrected_question']}")
                         st.markdown(f"**Answer:**")
                         st.info(result.get("answer",""))
+                        msg_placeholder.success(" ") 
                         if result.get("similar_found", False):
                             st.success("✅ Found a similar question in the database!")
+                            msg_placeholder.success("  ") 
                         if result.get("sources"):
                             with st.expander(f"Relevant Sentences (Top {len(result['sources'])})"):
                                 for i, r in enumerate(result["sources"], 1):
@@ -236,6 +246,7 @@ def main():
                                     snippet = r["text"][:500] + "..." if len(r["text"]) > 500 else r["text"]
                                     st.caption(snippet)
                                     st.markdown("---")
+                                    msg_placeholder.success("Done!") 
                     else:
                         try:
                             st.error(f"❌ Error: {response.json().get('detail', 'Unknown error')}")
@@ -273,7 +284,7 @@ def main():
                             else:
                                 st.warning(f"Error: {response.json().get('detail','Unknown error')}")
                         except Exception as e:
-                            st.warning(f"Error generating questions: {e}")
+                            st.warning(f"No context to the PDF")
                 else:
                     st.info("📄 Please upload and process a PDF to generate questions and answers.")
 
